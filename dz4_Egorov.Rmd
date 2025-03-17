@@ -80,10 +80,13 @@ trip_review$cluster <- kmeans_result$cluster
 avg_ratings <- colMeans(trip_review[, 2:11])
 print(avg_ratings)
 ```
+Ящики с усами по переменным
+
 ```{r}
-ggplot(trip_review, aes(x = Category.1,  fill = Category.1)) +    # Create boxplot chart in ggplot2
-  geom_boxplot()
+trip_review %>% select_if(is.numeric)  %>% pivot_longer(1:11, values_to="value", names_to="names") %>% 
+  ggplot() + geom_boxplot(aes(x = value), bins = 20, colour = "black", fill = "white") + facet_wrap(~ names, scales = "free", ncol=3)
 ```
+
 Провеем попарный Т критери для музеев и галерей, Category.1, Category.5
 Нулевая гипотеза- Средние значения Category.1 равны среднему значению Category.5
 
