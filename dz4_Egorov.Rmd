@@ -1,0 +1,114 @@
+---
+title: "dz4"
+author: "Yan Egorov"
+date: "2025-03-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+trip_review <- read.csv("E:\\mag\\r\\tripadvisor_review.csv",sep=",")
+```
+
+
+```{r}
+
+library(NbClust) #много индексов для определения оптимального числа кластеров
+library(fpc) #много различных методов кластеризации
+library(factoextra) #визуализация кластерного анализа
+```
+Проведем скалирование
+
+```{r}
+trip_review_sc <- scale(trip_review[, c(2:6, 8:10)])
+```
+Построим корреляционную матрицу
+
+```{r}
+correlation_matrix <- cor(trip_review_sc)
+print(correlation_matrix)
+
+
+library(corrplot)
+corrplot(correlation_matrix, method = "circle")
+```
+Высокие коэффициенты коррелции практически отсутствуют, можно увидеть их для 3 и 7 категории
+
+```{r}
+any(is.na(trip_review))
+```
+
+
+```{r}
+trip_review_sc <- as.data.frame(trip_review_sc)
+fviz_nbclust(trip_review_sc, kmeans, method="wss")
+
+```
+```{r}
+fviz_nbclust(trip_review_sc, FUNcluster = kmeans, method="silhouette")
+```
+Можем увидеть, что оптимальное колличество классов- 2, однако для 4 классов результаты не сильно хуже
+
+```{r}
+clus_res <- kmeans(trip_review_sc, 5)
+fviz_cluster(clus_res, trip_review_sc, stand = FALSE,  geom = "point", ggtheme = theme_bw())
+```
+```{r}
+clboo_res <- fpc::clusterboot(trip_review_sc,B=20,bootmethod=c("boot"),clustermethod=kmeansCBI,k=5)
+# 5 кластеров более устойчиво, чем 4 и 6.
+clboo_res
+```
+Можем увидеть, что при разделении на 5 классов результаты нестабильны, для некоторых классов,  значение коэффициента Жаккара меньше 0,8
+
+```{r}
+set.seed(123)  # Для воспроизводимости
+
+
+# Кластеризация с использованием K-средних
+kmeans_result <- kmeans(trip_review_sc, centers = 5, nstart = 25)
+
+# Добавление результатов кластеризации в исходный датасет
+trip_review$cluster <- kmeans_result$cluster
+```
+
+Представим таблицу с оценками
+
+```{r}
+avg_ratings <- colMeans(trip_review[, 2:11])
+print(avg_ratings)
+```
+```{r}
+ggplot(trip_review, aes(x = Category.1,  fill = Category.1)) +    # Create boxplot chart in ggplot2
+  geom_boxplot()
+```
+Провеем попарный Т критери для музеев и галерей, Category.1, Category.5
+Нулевая гипотеза- Средние значения Category.1 равны среднему значению Category.5
+
+```{r}
+t_test_result <- t.test(trip_review$Category.1, trip_review$Category.5, paired = TRUE)
+
+# Вывод результатов
+print(t_test_result)
+```
+Поскольку p-value < 0.05, мы можем отвергнуть нулевую гипотезу о равенстве средних и сделать вывод, что средние значения "Category.1" и "Category.5" статистически значимо различаются.
+
+
+Для того, чтобы охарактеризовать кластеры, можно попытаться посмотреть, в каких кластерах средние оценки по местам интереса
+
+```{r}
+value_klasters<-trip_review%>% group_by(cluster) %>% summarise (mean_review1=mean(Category.1),mean_review2=mean(Category.2),mean_review3=mean(Category.3),mean_review4=mean(Category.4),mean_review5=mean(Category.5),mean_review6=mean(Category.6),mean_review7=mean(Category.7),mean_review8=mean(Category.8),mean_review9=mean(Category.9),mean_review10=mean(Category.10))
+value_klasters
+
+```
+Можно увидеть, что для первого кластера самые высокие оценки среди всех для 1 категории, таким образом именно она скорее описывает его, также для него в целом характерна 8-я категория, хотя она и не сильно отличает его от других классов. Тут скорее можно сказать о том, что люди из первого кластера- любители картинных галерей.
+
+Для второго класса наиболее характерна 3-я категория, она существенно отделяет его от других. Также можно сказать и про 5-ю и 6-ю хотя различия с другими кластерами там уже не такие большие. Тут довольно логично, что люди которые любят бары, также любят курорты. Однако и для музеев у них оценка выше остальных.
+
+Третий кластер хорошо характеризуется 4-ой категорией, существенная разница с другими кластерами. Сюда отнесли любителей ресторанов.
+
+Четвертый кластер может быть охаракетризован 8-ой и 9-ой категорией, поскольку имеет там самые выские значения. Также 1-ая первая категория может характеризовать данный кластер, поскольку там значения наименьшие. Люди которые любят пляжи и театры. Хотя даже скорее театры, потому что на пляжи у всех оценки довольно высокие.
+
+Для пятого кластера характерна 4-я, 6-я и 9-я категория, значения там наименьшие и при том относительная разница не так мала. Также можно охарактеризовать 10-ой категорией с наибольшими значениями. Тут были отнесены те люди, которые больше всего не любят все места, кроме религиозных, потому что у них почти везде самые плохие оценки.

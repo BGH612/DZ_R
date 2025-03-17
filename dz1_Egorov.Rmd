@@ -1,0 +1,177 @@
+---
+title: "DZ1"
+author: "Yan Egorov"
+date: "2025-02-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+install.packages("corrplot")
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(ggridges)
+library(beeswarm)
+
+grades<- read.csv(file = "E:\\mag\\r\\Students_Grading_Dataset.csv",sep=",")
+```
+
+
+В качестве датасета для исследования мной был выбран набор данных об успеваемости учеников. в Качестве группового признака будет взят уровень дохода семьи учеников (family_income_level как он называется в таблице).
+
+**Исследовательский вопрос:** Какие факторы могут служить определяющими, чтобы выявить уровень дохода семьи ученика
+**Набор данных: ** чтобы ответить на исследовательский вопрос были проанализированы 5000 сдудентов и основные данные о них, связанные с их состоянием и успеваемостью. 
+ В качестве основных переменных для анализа будут использоваться:
+ Gender- пол
+ Age- возраст
+ Department- направление обучения
+ Attendance- посещяемость
+ Total score- итоговая оценка
+ Extracurricular_Activities - внекласные активности
+ family_income_level- уровень дохода семьи
+ stress_level- уровень стресса
+ sleep_hours_per_night-количество часов сна ночью
+ 
+```{r}
+grades1<-grades[,c("Gender","Age","Department","Attendance....","Total_Score","Extracurricular_Activities","Family_Income_Level","Stress_Level..1.10.","Sleep_Hours_per_Night")]
+```
+
+
+В столбце Attendance присутвуют строки с пропущенными значениями, заменим их средними 
+
+```{r}
+grades1$Attendance....[is.na(grades1$Attendance....)] <- mean (grades1$Attendance...., na.rm= TRUE)
+```
+
+
+Также для более удобной работы мне необходимо перевести нечисловые значения к числовым 
+```{r}
+grades1$Department[grades1$Department == "Engineering"] <- "0"
+grades1$Department[grades1$Department == "Business"] <- "1"
+grades1$Department[grades1$Department == "Mathematics"] <- "2"
+grades1$Department[grades1$Department == "CS"] <- "3"
+
+grades1$Gender[grades1$Gender == "Male"] <- "0"
+grades1$Gender[grades1$Gender == "Female"] <- "1"
+
+grades1$Extracurricular_Activities[grades1$Extracurricular_Activities == "No"] <- "0"
+grades1$Extracurricular_Activities[grades1$Extracurricular_Activities == "Yes"] <- "1"
+
+grades1$Family_Income_Level[grades1$Family_Income_Level == "Low"] <- "0"
+grades1$Family_Income_Level[grades1$Family_Income_Level == "High"] <- "1"
+grades1$Family_Income_Level[grades1$Family_Income_Level == "Medium"] <- "2"
+```
+
+
+
+Представим описание для группового признака Семейный доход по общему колличеству баллов, набранных ребенком
+```{r}
+grades1 %>%
+  group_by(Family_Income_Level) %>%
+  summarise (mean_score=mean(Total_Score), min_score=min(Total_Score),max_score=max(Total_Score),median_score=median(Total_Score))
+```
+
+
+Касательно баллов нельзя сделать однозначного вывода
+
+```{r}
+grades1 %>%
+  group_by(Family_Income_Level) %>%
+  summarise (mean_score=mean(Attendance....), min_score=min(Attendance....),max_score=max(Attendance....),median_score=median(Attendance....))
+```
+
+
+Посещяемость немного увеличивается с ростом благосостояния родителей
+
+```{r}
+grades1 %>%
+  group_by(Family_Income_Level) %>%
+  summarise (mean_score=mean(Age), min_score=min(Age),max_score=max(Age),median_score=median(Age)) 
+```
+
+ 
+Возраст у всех примерно одинаковый
+
+```{r}
+grades1 %>%
+  group_by(Family_Income_Level) %>%
+  summarise (mean_score=mean(Stress_Level..1.10.), min_score=min(Stress_Level..1.10.),max_score=max(Stress_Level..1.10.),median_score=median(Stress_Level..1.10.))  
+```
+
+
+Можно заметить, что уровень стресса растет вместе с доходом
+
+```{r}
+grades1 %>%
+  group_by(Family_Income_Level) %>%
+  summarise (mean_score=mean(Sleep_Hours_per_Night), min_score=min(Sleep_Hours_per_Night),max_score=max(Sleep_Hours_per_Night),median_score=median(Sleep_Hours_per_Night)) 
+```
+
+
+Можно увидеть примерно одинаковые результаты для всех групп дохода родителей
+
+Ящик с усами по оценкам
+
+```{r}
+
+grades1 %>% select (Total_Score,Gender) %>% ggplot (aes(x=Total_Score, col = Gender)) + geom_boxplot()
+```
+
+
+Ящик с усами по посещяемости
+```{r}
+grades1 %>% select (Attendance....,Gender) %>% ggplot (aes(x=Attendance...., col = Gender)) + geom_boxplot()
+```
+
+
+
+Ящик с усами по возрасту 
+
+```{r}
+grades1 %>% select (Age,Gender) %>% ggplot (aes(x=Age, col = Gender)) + geom_boxplot()
+```
+
+
+Ящик с усами по уровню стресса
+
+```{r}
+grades1 %>% select (Stress_Level..1.10.,Gender) %>% ggplot (aes(x=Stress_Level..1.10., col = Gender)) + geom_boxplot()
+```
+
+
+
+Ящик с усами по часам сна
+
+```{r}
+grades1 %>% select (Sleep_Hours_per_Night,Gender) %>% ggplot (aes(x=Sleep_Hours_per_Night, col = Gender)) + geom_boxplot()
+```
+
+
+
+```{r}
+ggplot(grades1, aes(x=Total_Score))+geom_histogram(bindwith=1,fill="steelblue",color="black")+labs(title="Гистограмма общих баллов")
+```
+
+
+```{r}
+ggplot(grades1, aes(x=Family_Income_Level))+geom_bar(fill="orange")+labs(title="Столбчатая диаграмма по категориям дохода")
+```
+```{r}
+ggplot(grades1, aes(x = Attendance...., y = Family_Income_Level, fill = Family_Income_Level)) +
+  geom_density_ridges() +
+  theme_ridges() + 
+  theme(legend.position = "none")
+```
+
+```{r}
+beeswarm(
+  grades1$Sleep_Hours_per_Night,
+  col="blue"
+) 
+```
+```{r}
+ggplot(grades1, aes(x=Stress_Level..1.10., y=Gender, fill=Stress_Level..1.10.)) + geom_violin()
+```
+

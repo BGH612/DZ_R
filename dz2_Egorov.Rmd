@@ -1,0 +1,245 @@
+---
+title: "dz2"
+author: "Yan Egorov"
+date: "2025-03-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(readr) 
+
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(ggridges)
+library(beeswarm)
+
+grades<- read.csv(file = "E:\\mag\\r\\Students_Grading_Dataset.csv",sep=",")
+```
+
+
+В качестве датасета для исследования мной был выбран набор данных об успеваемости учеников. в Качестве группового признака будет взят уровень дохода семьи учеников (family_income_level как он называется в таблице).
+
+**Исследовательский вопрос:** Какие факторы могут служить определяющими, чтобы выявить уровень дохода семьи ученика
+**Набор данных: ** чтобы ответить на исследовательский вопрос были проанализированы 5000 сдудентов и основные данные о них, связанные с их состоянием и успеваемостью. 
+ В качестве основных переменных для анализа будут использоваться:
+ Gender- пол
+ Age- возраст
+ Department- направление обучения
+ Attendance- посещяемость
+ Total score- итоговая оценка
+ Extracurricular_Activities - внекласные активности
+ family_income_level- уровень дохода семьи
+ stress_level- уровень стресса
+ sleep_hours_per_night-количество часов сна ночью
+ 
+```{r}
+grades1<-grades[,c("Gender","Age","Department","Attendance....","Total_Score","Extracurricular_Activities","Family_Income_Level","Stress_Level..1.10.","Sleep_Hours_per_Night")]
+```
+
+
+В столбце Attendance присутвуют строки с пропущенными значениями, заменим их средними 
+
+```{r}
+
+```
+
+
+Также для более удобной работы мне необходимо перевести нечисловые значения к числовым 
+```{r}
+grades1$Department[grades1$Department == "Engineering"] <- "0"
+grades1$Department[grades1$Department == "Business"] <- "1"
+grades1$Department[grades1$Department == "Mathematics"] <- "2"
+grades1$Department[grades1$Department == "CS"] <- "3"
+
+grades1$Gender[grades1$Gender == "Male"] <- "0"
+grades1$Gender[grades1$Gender == "Female"] <- "1"
+
+grades1$Extracurricular_Activities[grades1$Extracurricular_Activities == "No"] <- "0"
+grades1$Extracurricular_Activities[grades1$Extracurricular_Activities == "Yes"] <- "1"
+
+grades1$Family_Income_Level[grades1$Family_Income_Level == "Low"] <- "0"
+grades1$Family_Income_Level[grades1$Family_Income_Level == "High"] <- "1"
+grades1$Family_Income_Level[grades1$Family_Income_Level == "Medium"] <- "2"
+```
+
+``
+Построим гистограммы частот непрерывных признаков
+```{r}
+ggplot(data = grades1, aes(x = Attendance....)) +
+  geom_histogram( fill = "blue", color = "black") +
+  labs(title = "Гистограмма частот для посещаемости", x = "Значение", y = "Частота")
+```
+На гистограмме частот посещяемости можно увидеть, что наиболее редко-встречающиеся значения- это минимальная посещяемость, однако их тоже нельзя назвать выбросами
+```{r}
+ggplot(data = grades1, aes(x = Total_Score)) +
+  geom_histogram( fill = "limegreen", color = "black") +
+  labs(title = "Гистограмма частот для общего балла", x = "Значение", y = "Частота")
+```
+
+Тут довольно сложно сказать о наличии каких-либо выбросов, поскольку разница между наибольшей и наименьшей частотой составляет менее чем 2 раза
+
+```{r}
+ggplot(data = grades1, aes(x = Stress_Level..1.10.)) +
+  geom_histogram(binwidth = 0.5, fill = "yellow", color = "black") +
+  labs(title = "Гистограмма частот для уровня стресса", x = "Значение", y = "Частота")
+```
+
+Для уровня стресса также отсютвуют какие либо кретические значения, частоты по всем значениям очень близки
+
+```{r}
+ggplot(data = grades1, aes(x = Sleep_Hours_per_Night)) +
+  geom_histogram(binwidth = 0.5, fill = "purple", color = "black") +
+  labs(title = "Гистограмма частот для количества часов сна", x = "Значение", y = "Частота")
+```
+
+В данном случае явные выбросы также отсутвуют поскольку, наименьшая частота, для самого большого количества часов в сна, менее чем в двое отличается по частоте от наиболее часто встречающегося значения
+```{r}
+ggplot(data = grades1, aes(x = Age)) +
+  geom_histogram(binwidth = 0.5, fill = "darkred", color = "black") +
+  labs(title = "Гистограмма частот для возраста", x = "Значение", y = "Частота")
+```
+По возрасту выборка получилась довольно сбалансированная, количество везде примерно одинаковое
+
+
+Перейдем к оценке качественных признаков
+
+```{r}
+ggplot(grades1, aes(x = Department)) +
+  geom_bar(fill = "darkgreen") +theme_minimal()
+  labs(title = "Гистограмма для направления обучения", x = "Значение", y = "Частота")
+```
+
+Как мы можем увидеть наименьшая частота у направления обучения с номером 2, однако его все же нельзя назвать выбросом
+```{r}
+ggplot(grades1, aes(x = Family_Income_Level)) +
+  geom_bar(fill = "brown") +theme_minimal()
+  labs(title = "Гистограмма для уровня дохода", x = "Значение", y = "Частота")
+```
+
+В данном случае все три качественных признака довольно сблансированы, частота у наименее популярного отличается меньше чем в два раза от наиболее часто встречающегося
+
+```{r}
+ggplot(grades1, aes(x = Extracurricular_Activities)) +
+  geom_bar(fill = "lightblue") +theme_minimal()
+  labs(title = "Гистограмма для доп активностей", x = "Значение", y = "Частота")
+```
+
+Определение аномалий
+
+
+Посмотрим еще раз на все частоты вместе
+
+```{r}
+grades1 %>% select_if(is.numeric)  %>% pivot_longer(1:5, values_to="value", names_to="names") %>% 
+  ggplot() + geom_histogram(aes(x = value), bins = 20, colour = "black", fill = "white") + facet_wrap(~ names, scales = "free", ncol=3)
+```
+Поскольку в нашем датасете присутсвуют пустые значения для посещяемости, заполним их средними, чтобы произвести поиск аномалий
+```{r}
+grades1$Attendance....[is.na(grades1$Attendance....)] <- mean (grades1$Attendance...., na.rm= TRUE)
+```
+
+
+
+
+```{r}
+
+str(grades1)
+```
+Переведем в числовой тип 
+```{r}
+grades1$Gender <- as.numeric(grades1$Gender)
+grades1$Department <- as.numeric(grades1$Department)
+grades1$Extracurricular_Activities <- as.numeric(grades1$Extracurricular_Activities)
+grades1$Family_Income_Level <- as.numeric(grades1$Family_Income_Level)
+grades1$Age <- as.numeric(grades1$Age)
+grades1$Stress_Level..1.10. <- as.numeric(grades1$Stress_Level..1.10.)
+str(grades1)
+
+```
+
+```{r}
+library(dbscan)
+lof <- lof(grades1 %>% select(-Total_Score, -Family_Income_Level), minPts = 3)
+summary(lof)
+
+
+```
+Найдем аномалии при помощи isolation forest
+```{r}
+library('isotree')
+model<- isolation.forest(grades1,ntrees=100, sample_size = 256)
+grades1$anomaly_score<-predict(model,grades1,type='score')
+threshold<- quantile(grades1$anomaly_score,0.95)
+grades1$anomaly<- ifelse (grades1$anomaly_score>threshold, 'Outlier','Normal')
+ggplot(grades1, aes(x=Sleep_Hours_per_Night, y= Total_Score,color=anomaly))+geom_point(size=3,alpha=0.7)+scale_color_manual(values=c('Normal'='blue','outlier'='red'))+theme_minimal()+ggtitle('Аномалии, найденные с помощью Isolation Forest')
+```
+Найдем конкретные строки содержащие аномалии
+```{r}
+grades1[grep('Outlier',grades1$anomaly),]
+```
+Таким образом удалось найти 250 выбросов.
+
+
+Сравнение выраженности такого непрерывного признака как Total_Score между группами участников разного пола
+***Нулевая гипотеза- среднее значение оценки не отличается от пола
+```{r}
+t.test(grades1$Total_Score ~ grades1$Gender)
+```
+Полученное p-значение> 0,05, таким образом нулевая гипотеза не может быть отвергнута 
+```{r}
+shapiro.test(grades1$Total_Score)
+shapiro.test(grades1$Attendance....)
+```
+В обоих случаях распределение нормальное
+
+ 
+Сравнение выраженности такого непрерывного признака как Attendance.... между группами с разным уровнем дохода Family_Income_Level
+***Нулевая гипотеза- посещяемость не зависит от того, какой уровень дохода у родителей
+```{r}
+anova_result<-aov(Attendance.... ~ Family_Income_Level, data=grades1)
+summary(anova_result)
+```
+По результатам теста Pr(>F)>0,05, что говорит о том, что гипотеза не может быть отвергнута
+
+Сравнение выраженности такого непрерывного признака как Sleep_Hours_Per_Night между группами с разным уровнем дохода Family_Income_Level
+***Нулевая гипотеза- количество часов сна не зависит от того, какой уровень дохода у родителей
+```{r}
+anova_result<-aov(Sleep_Hours_per_Night ~ Family_Income_Level, data=grades1)
+summary(anova_result)
+```
+По результатам теста Pr(>F)>0,05, что говорит о том, что группы не отличаются статистически, таким образом гипотеза не может быть отвергнута
+```{r}
+grades1<-grades1 %>% select(-c(anomaly,anomaly_score))
+```
+Проанализируем корреляцию непрерывных признаков
+```{r}
+library(corrplot)
+cor_matrix <- cor(grades1, method='pearson')
+corrplot(cor_matrix,method='color',type='upper',tl.col='black',tl.srt=45)
+
+
+```
+
+Корреляция практически полностью отсутвует у всех переменных
+Проверим корреляцию между посещяемостью и итоговой оценкой
+Гипотеза- коэффициент корреляции равен нулю
+```{r}
+cor.test(grades1$Attendance...., grades1$Total_Score)
+```
+
+Гипотеза не может быть отвергнута, т.к. p-value>0.05
+
+Проверим корреляцию между посещяемостью и часами сна
+
+```{r}
+cor.test(grades1$Attendance...., grades1$Sleep_Hours_per_Night)
+```
+Гипотеза отвергается, поскольку p-value<0.05
+
+Проверим корреляцию между итоговой оценкой и часами сна
+```{r}
+cor.test(grades1$Total_Score, grades1$Sleep_Hours_per_Night)
+```
+Гипотеза не может быть отвергнута, т.к. p-value>0.05
