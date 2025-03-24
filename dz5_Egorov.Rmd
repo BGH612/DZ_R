@@ -1,0 +1,115 @@
+---
+title: "DZ5"
+author: "Yan Egorov"
+date: "2025-03-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+insurance<- read.csv(file = "E:\\mag\\r\\insurance.csv",sep=",")
+insurance$charges_log<- log(insurance$charges, base = exp(1))
+```
+
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+```
+
+```{r}
+regr_data <- insurance %>% select(-charges)
+rmodel_1 <- lm(charges_log~., data=regr_data)
+summary(rmodel_1)
+```
+
+
+Можно увидеть, что значимые -все переменные, только регион северозапад значим на низком уровне
+
+Интерпретация- При увеличении возраста на 1, при прочих равных логарифм стоимости увеличится на 0.034.
+При изменении пола, при прочих равных логарифм стоимости уменьшается на 0.075.
+При увеличении индекса массы тела на 1, при прочих равных логарифм стоимости увеличится на 0.013.
+При увеличении количества детей на 1, при прочих равных логарифм стоимости увеличится на 0.101.
+При условии того, что человек курит, при прочих равных логарифм стоимости увеличится на 1.55 .
+При условии того, что человек страхуется в регионе северо-запад, логарифм стоимости уменьшается на 0.063
+При условии того, что человек страхуется в регионе юго-восток, логарифм стоимости уменьшается на 0.157
+При условии того, что человек страхуется в регионе юго-запад, логарифм стоимости уменьшается на 0.128
+
+
+Коэффициент детерминации получился равным 0.7679, это означает, что около 76.8% вариации логарифма страховых выплат (charges_log) объясняется предикторами, включёнными в модель.
+Значение F-статистики; p-value< 0.05, это говорит о том, что модель значима, гипотеза о равенстве нулю всех коэффициентов при признаках не принимается на уровне значимости 0.05. 
+
+```{r}
+plot(rmodel_1, 1)
+```
+
+
+```{r}
+p1<-ggplot(rmodel_1, aes(.fitted, .resid))+ geom_point() + stat_smooth(method="loess") + geom_hline(yintercept=0, col="red", linetype="dashed") + 
+labs(x="Подогнанные значения (fitted)", y="Остатки регрессии (residuals)", title = "Residual vs Fitted Plot")+theme_bw()
+
+p1
+```
+
+Можно увидеть, что график нелинейный, это свидетельствует о нарушении предположения о линейности модели — линейная модель не полностью отражает истинную зависимость. Возможно присутствует гетероскедастичность.
+
+```{r}
+plot(rmodel_1, 5)
+
+
+
+p5 <- ggplot(rmodel_1, aes(.hat, .stdresid)) + 
+  geom_point(aes(size=.cooksd), na.rm=TRUE) + 
+  stat_smooth(method="loess", na.rm=TRUE) + 
+  labs(x="Leverage", y="Standardized Residuals", title = "Residual vs Leverage Plot") + 
+  scale_size_continuous("Cook's Distance", range=c(1,5)) + 
+  theme_bw()+theme(legend.position="bottom")
+
+
+inx <- ifelse(cooks.distance(rmodel_1) < 4/4898, "keep","delete")
+
+p5
+```
+
+Можно увидеть некоторые точки справа и сверху с большой дисстанцией Кука.
+
+
+
+```{r}
+rmodel_1_mod <- lm(charges_log~., data=regr_data[inx=='keep',])
+summary(rmodel_1_mod)
+```
+Можно увидеть существенное повышение R2 и adjusted R2 до 0.9708 и 0.9705 соответственно.
+
+```{r}
+#критерий Лиллиефорса для проверки на нормальность из пакета nortest
+nortest::lillie.test(rstandard(rmodel_1_mod))
+```
+p-value<0.05, мы отвергаем гипотезу о нормальности остатков.
+```{r}
+p2 <- ggplot(rmodel_1_mod, aes(qqnorm(.stdresid)[[1]], .stdresid)) + 
+  geom_point(na.rm = TRUE) + 
+  geom_abline() + 
+  labs(x = "Нормальное распределение", y = "Стандартизованные остатки", title = "График Q-Q с нормальным распределением") + 
+  theme_bw()
+
+p2
+```
+По графику также видно, что остатки не распределены нормально, можно увидеть сильные отклонениия на концах
+```{r}
+library('nortest')
+```
+
+```{r}
+car::ncvTest(rmodel_1_mod)
+```
+p-value<0.05, значит гипотеза об однородности распределения на принимается (гетероскедастичность)
+```{r}
+ggplot(rmodel_1_mod, aes(.fitted, sqrt(abs(.stdresid)))) + 
+  geom_point(na.rm=TRUE) + 
+  stat_smooth(method="loess", na.rm = TRUE) + 
+  labs(x="Fitted Value", y = expression(sqrt("|Standardized residuals|")), title = "Scale-Location plot") + 
+  theme_bw()
+```
+График также подтверждает гетероскедастичность, поскольку видно, как остатки сильно растут, и отдаляются от линии.
